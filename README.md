@@ -43,7 +43,7 @@ That's really the entire code. `|` is union, `&` is intersection, `-` is differe
 Requires Python 3. All dependencies are installed automatically.
 
 ```bash
-git clone https://github.com/fogleman/sdf.git
+git clone https://github.com/stringertheory/sdf.git
 cd sdf
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
@@ -246,7 +246,7 @@ surprisingly fast (for marching cubes). Meshes of adequate detail can
 still be quite large in terms of number of triangles.
 
 The core "engine" of the `sdf` library is very small and can be found in
-[core.py](https://github.com/fogleman/sdf/blob/main/sdf/core.py).
+[core.py](https://github.com/stringertheory/sdf/blob/main/sdf/core.py).
 
 In short, there is nothing algorithmically revolutionary here. The goal is
 to provide a simple, fun, and easy-to-use API for generating 3D models in our
@@ -254,18 +254,18 @@ favorite language Python.
 
 ## Files
 
-- [sdf/core.py](https://github.com/fogleman/sdf/blob/main/sdf/core.py): The core mesh-generation engine. Also includes code for estimating the bounding box of an SDF and for plotting a 2D slice of an SDF with matplotlib.
-- [sdf/d2.py](https://github.com/fogleman/sdf/blob/main/sdf/d2.py): 2D signed distance functions
-- [sdf/d3.py](https://github.com/fogleman/sdf/blob/main/sdf/d3.py): 3D signed distance functions
-- [sdf/dn.py](https://github.com/fogleman/sdf/blob/main/sdf/dn.py): Dimension-agnostic signed distance functions
-- [sdf/ease.py](https://github.com/fogleman/sdf/blob/main/sdf/ease.py): [Easing functions](https://easings.net/) that operate on numpy arrays. Some SDFs take an easing function as a parameter.
-- [sdf/mesh.py](https://github.com/fogleman/sdf/blob/main/sdf/mesh.py): Code for loading meshes and using them as SDFs.
-- [sdf/progress.py](https://github.com/fogleman/sdf/blob/main/sdf/progress.py): A console progress bar.
-- [sdf/step.py](https://github.com/fogleman/sdf/blob/main/sdf/step.py): Code for writing [STEP files](https://en.wikipedia.org/wiki/ISO_10303-21) (ISO-10303-21).
-- [sdf/stl.py](https://github.com/fogleman/sdf/blob/main/sdf/stl.py): Code for writing a binary [STL file](https://en.wikipedia.org/wiki/STL_(file_format)).
-- [sdf/text.py](https://github.com/fogleman/sdf/blob/main/sdf/text.py): Generate 2D SDFs for text (which can then be extruded)
-- [sdf/util.py](https://github.com/fogleman/sdf/blob/main/sdf/util.py): Utility constants and functions.
-- [sdf/viewer.py](https://github.com/fogleman/sdf/blob/main/sdf/viewer.py): Interactive 3D preview using [pyvista](https://pyvista.org/).
+- [sdf/core.py](https://github.com/stringertheory/sdf/blob/main/sdf/core.py): The core mesh-generation engine. Also includes code for estimating the bounding box of an SDF and for plotting a 2D slice of an SDF with matplotlib.
+- [sdf/d2.py](https://github.com/stringertheory/sdf/blob/main/sdf/d2.py): 2D signed distance functions
+- [sdf/d3.py](https://github.com/stringertheory/sdf/blob/main/sdf/d3.py): 3D signed distance functions
+- [sdf/dn.py](https://github.com/stringertheory/sdf/blob/main/sdf/dn.py): Dimension-agnostic signed distance functions
+- [sdf/ease.py](https://github.com/stringertheory/sdf/blob/main/sdf/ease.py): [Easing functions](https://easings.net/) that operate on numpy arrays. Some SDFs take an easing function as a parameter.
+- [sdf/mesh.py](https://github.com/stringertheory/sdf/blob/main/sdf/mesh.py): Code for loading meshes and using them as SDFs.
+- [sdf/progress.py](https://github.com/stringertheory/sdf/blob/main/sdf/progress.py): A console progress bar.
+- [sdf/step.py](https://github.com/stringertheory/sdf/blob/main/sdf/step.py): Code for writing [STEP files](https://en.wikipedia.org/wiki/ISO_10303-21) (ISO-10303-21).
+- [sdf/stl.py](https://github.com/stringertheory/sdf/blob/main/sdf/stl.py): Code for writing a binary [STL file](https://en.wikipedia.org/wiki/STL_(file_format)).
+- [sdf/text.py](https://github.com/stringertheory/sdf/blob/main/sdf/text.py): Generate 2D SDFs for text (which can then be extruded)
+- [sdf/util.py](https://github.com/stringertheory/sdf/blob/main/sdf/util.py): Utility constants and functions.
+- [sdf/viewer.py](https://github.com/stringertheory/sdf/blob/main/sdf/viewer.py): Interactive 3D preview using [pyvista](https://pyvista.org/).
 
 ## SDF Implementation
 

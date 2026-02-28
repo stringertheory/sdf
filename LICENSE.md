@@ -1,4 +1,14 @@
+MIT License
+
 Copyright (C) 2021 Michael Fogleman
+Copyright (C) 2025 Kevin Stringer
+
+This project is a fork of [fogleman/sdf](https://github.com/fogleman/sdf)
+with enhancements drawn from the following community forks:
+
+- [nobodyinperson/sdf](https://github.com/nobodyinperson/sdf) by Yann Buchau
+- [pschou/py-sdf](https://github.com/pschou/py-sdf) by Paul Schou
+- [worbit/sdf](https://github.com/worbit/sdf) by worbit
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

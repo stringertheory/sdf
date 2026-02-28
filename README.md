@@ -709,6 +709,26 @@ f = intersection(a, b, k=0.25) # equivalent
 
 <br clear="right">
 
+## Fillets & Chamfers
+
+The `k` parameter on smooth unions creates **rounded fillets** — soft transitions where two shapes meet. The `chamfer()` operation creates **flat 45° bevels** along edges.
+
+### fillet (smooth intersection)
+
+A box with its top edges rounded via smooth intersection with a slab. The `k` parameter on the intersection creates a rounded fillet where the clipping plane meets the box sides.
+
+```python
+f = box((2, 2, 2)) & slab(z1=0.5).k(0.4)
+```
+
+### chamfer_edges
+
+The same box and slab, but using `chamfer()` instead of smooth intersection. This creates flat 45° bevels where the top face meets the sides.
+
+```python
+f = box((2, 2, 2)).chamfer(slab(z1=0.5), 0.4)
+```
+
 ## Repetition
 
 ### repeat
@@ -1040,7 +1060,7 @@ f = sphere(1, center=(2, 0, 0)).mirror_copy((1, 0, 0))  # spheres at +2 and -2
 Chamfered intersection of two shapes.
 
 ```python
-f = sphere().chamfer(box(), 0.1)
+f = box(1.5).chamfer(sphere(), 0.3)
 ```
 
 ### twist_between

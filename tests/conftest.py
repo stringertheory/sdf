@@ -67,3 +67,10 @@ def unit_circle():
 @pytest.fixture
 def unit_rectangle():
     return sdf.rectangle(1)
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--update-references", action="store_true", default=False,
+        help="Regenerate visual reference images instead of comparing",
+    )

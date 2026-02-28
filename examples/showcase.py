@@ -27,7 +27,22 @@ def _():
     )
     from sdf import ease
     import numpy as np
-    return (X, Y, Z, box, capped_cylinder, circle, cylinder, ease, hexagon, np, sdf, sphere, union)
+
+    return (
+        X,
+        Y,
+        Z,
+        box,
+        capped_cylinder,
+        circle,
+        cylinder,
+        ease,
+        hexagon,
+        np,
+        sdf,
+        sphere,
+        union,
+    )
 
 
 @app.cell
@@ -148,7 +163,7 @@ def _(mo):
 @app.cell
 def _(box):
     # A tall box twisted along the Z axis
-    twisted = box((0.8, 0.8, 2)).twist(1.5)
+    twisted = box((0.8, 0.8, 2)).twist(3.5)
     twisted.show()
     return
 

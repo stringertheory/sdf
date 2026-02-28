@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+addopts = "-m 'not visual'"
+markers = [
+    "visual: visual regression tests (run with: pytest -m visual)",
+]

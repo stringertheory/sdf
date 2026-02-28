@@ -8,13 +8,13 @@ Special thanks to [Inigo Quilez](https://iquilezles.org/) for his excellent docu
 - [3D Signed Distance Functions](https://iquilezles.org/www/articles/distfunctions/distfunctions.htm)
 - [2D Signed Distance Functions](https://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm)
 
-## Example
+## Quick Start
 
 <img width=350 align="right" src="docs/images/example.png">
 
-Here is a complete example that generates the model shown. This is the
-canonical [Constructive Solid Geometry](https://en.wikipedia.org/wiki/Constructive_solid_geometry)
-example. Note the use of operators for union, intersection, and difference.
+```bash
+pip install -e .
+```
 
 ```python
 from sdf import *
@@ -27,53 +27,41 @@ f -= c.orient(X) | c.orient(Y) | c.orient(Z)
 f.save('out.stl')
 ```
 
-Yes, that's really the entire code! You can 3D print that model or use it
-in a 3D application.
+That's really the entire code. `|` is union, `&` is intersection, `-` is difference. The result is a watertight mesh you can 3D print or import into any CAD tool.
 
-## More Examples
+<br clear="right">
 
-Have a cool example? Submit a PR!
+## Gallery
 
 | [gearlike.py](examples/gearlike.py) | [knurling.py](examples/knurling.py) | [blobby.py](examples/blobby.py) | [weave.py](examples/weave.py) |
 | --- | --- | --- | --- |
 | ![gearlike](docs/images/gearlike.png) | ![knurling](docs/images/knurling.png) | ![blobby](docs/images/blobby.png) | ![weave](docs/images/weave.png) |
 | ![gearlike](docs/images/gearlike.jpg) | ![knurling](docs/images/knurling.jpg) | ![blobby](docs/images/blobby.jpg) | ![weave](docs/images/weave.jpg) |
 
-## Requirements
-
-Note that the dependencies will be automatically installed by setup.py when
-following the directions below.
-
-- Python 3
-- matplotlib
-- meshio
-- numpy
-- Pillow
-- pyvista
-- scikit-image
-- scipy
-
 ## Installation
 
-Use the commands below to clone the repository and install the `sdf` library
-in a Python virtualenv.
+Requires Python 3. All dependencies are installed automatically.
 
 ```bash
 git clone https://github.com/fogleman/sdf.git
 cd sdf
-virtualenv env
-. env/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -e .
 ```
 
-Confirm that it works:
+Verify it works:
 
 ```bash
-python examples/example.py # should generate a file named out.stl
+python examples/example.py  # generates out.stl
 ```
 
-You can skip the installation if you always run scripts that import `sdf`
-from the root folder.
+### Running Tests
+
+```bash
+pytest                              # unit tests (visual tests excluded by default)
+pytest -m visual --update-references  # regenerate visual regression references
+pytest -m visual                    # compare against references
+```
 
 ## OpenVDB
 

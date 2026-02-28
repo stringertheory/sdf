@@ -33,13 +33,15 @@ def _skip(sdf, job):
     x = (x0 + x1) / 2
     y = (y0 + y1) / 2
     z = (z0 + z1) / 2
-    r = abs(sdf(np.array([(x, y, z)])).reshape(-1)[0])
+    corners = np.array(list(itertools.product((x0, x1), (y0, y1), (z0, z1))))
+    all_pts = np.vstack([[[x, y, z]], corners])
+    values = sdf(all_pts).reshape(-1)
+    r = abs(values[0])
     d = np.linalg.norm(np.array((x-x0, y-y0, z-z0)))
     if r <= d:
         return False
-    corners = np.array(list(itertools.product((x0, x1), (y0, y1), (z0, z1))))
-    values = sdf(corners).reshape(-1)
-    same = np.all(values > 0) if values[0] > 0 else np.all(values < 0)
+    corner_vals = values[1:]
+    same = np.all(corner_vals > 0) if corner_vals[0] > 0 else np.all(corner_vals < 0)
     return same
 
 def _worker(sdf, job, step, sparse):
@@ -60,7 +62,6 @@ def _worker(sdf, job, step, sparse):
     return points * scale + offset
 
 def _estimate_bounds(sdf):
-    # TODO: raise exception if bound estimation fails
     s = 16
     x0 = y0 = z0 = -1e9
     x1 = y1 = z1 = 1e9
@@ -77,6 +78,8 @@ def _estimate_bounds(sdf):
         P = _cartesian_product(X, Y, Z)
         volume = sdf(P).reshape((len(X), len(Y), len(Z)))
         where = np.argwhere(np.abs(volume) <= threshold)
+        if len(where) == 0:
+            break
         x1, y1, z1 = (x0, y0, z0) + where.max(axis=0) * d + d / 2
         x0, y0, z0 = (x0, y0, z0) + where.min(axis=0) * d - d / 2
     return ((x0, y0, z0), (x1, y1, z1))
@@ -138,11 +141,15 @@ def generate(
             empty += 1
         else:
             nonempty += 1
-            points.extend(result)
+            points.append(result)
     bar.done()
 
     if verbose:
         print('%d skipped, %d empty, %d nonempty' % (skipped, empty, nonempty))
+
+    points = np.concatenate(points) if points else np.empty((0, 3))
+
+    if verbose:
         triangles = len(points) // 3
         seconds = time.time() - start
         print('%d triangles in %g seconds' % (triangles, seconds))
@@ -151,8 +158,12 @@ def generate(
 
 def save(path, *args, **kwargs):
     points = generate(*args, **kwargs)
-    if path.lower().endswith('.stl'):
+    ext = path.lower()
+    if ext.endswith('.stl'):
         stl.write_binary_stl(path, points)
+    elif ext.endswith('.step') or ext.endswith('.stp'):
+        from . import step as step_module
+        step_module.write_step(path, points)
     else:
         mesh = _mesh(points)
         mesh.write(path)
@@ -230,6 +241,46 @@ def sample_slice(
 
     P = _cartesian_product(X, Y, Z)
     return sdf(P).reshape((w, h)), extent, axes
+
+def bounds(sdf):
+    return _estimate_bounds(sdf)
+
+def volume(sdf, bounds=None, samples=100000):
+    if bounds is None:
+        bounds = _estimate_bounds(sdf)
+    (x0, y0, z0), (x1, y1, z1) = bounds
+    bbox_vol = (x1 - x0) * (y1 - y0) * (z1 - z0)
+    rng = np.random.default_rng(42)
+    pts = np.column_stack([
+        rng.uniform(x0, x1, samples),
+        rng.uniform(y0, y1, samples),
+        rng.uniform(z0, z1, samples),
+    ])
+    inside = sdf(pts).reshape(-1) < 0
+    return bbox_vol * np.sum(inside) / samples
+
+def voxelize(sdf, step=None, bounds=None, samples=SAMPLES):
+    if bounds is None:
+        bounds = _estimate_bounds(sdf)
+    (x0, y0, z0), (x1, y1, z1) = bounds
+
+    if step is None:
+        vol = (x1 - x0) * (y1 - y0) * (z1 - z0)
+        step = (vol / samples) ** (1 / 3)
+
+    try:
+        dx, dy, dz = step
+    except TypeError:
+        dx = dy = dz = step
+
+    X = np.arange(x0, x1, dx)
+    Y = np.arange(y0, y1, dy)
+    Z = np.arange(z0, z1, dz)
+    P = _cartesian_product(X, Y, Z)
+    volume_arr = sdf(P).reshape((len(X), len(Y), len(Z)))
+    spacing = np.array([dx, dy, dz])
+    offset = np.array([x0, y0, z0])
+    return volume_arr, spacing, offset
 
 def show_slice(*args, **kwargs):
     import matplotlib.pyplot as plt

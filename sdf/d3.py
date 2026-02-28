@@ -36,14 +36,24 @@ class SDF3:
     def __sub__(self, other):
         return difference(self, other)
     def k(self, k=None):
-        self._k = k
-        return self
+        result = SDF3(self.f)
+        result._k = k
+        return result
     def generate(self, *args, **kwargs):
         return core.generate(self, *args, **kwargs)
     def save(self, path, *args, **kwargs):
         return core.save(path, self, *args, **kwargs)
     def show_slice(self, *args, **kwargs):
         return core.show_slice(self, *args, **kwargs)
+    def bounds(self):
+        return core.bounds(self)
+    def volume(self, *args, **kwargs):
+        return core.volume(self, *args, **kwargs)
+    def voxelize(self, *args, **kwargs):
+        return core.voxelize(self, *args, **kwargs)
+    def show(self, **kwargs):
+        from . import viewer
+        return viewer.show(self, **kwargs)
 
 def sdf3(f):
     def wrapper(*args, **kwargs):
@@ -65,7 +75,7 @@ def op32(f):
 # Helpers
 
 def _length(a):
-    return np.linalg.norm(a, axis=1)
+    return np.sqrt(np.einsum('ij,ij->i', a, a))
 
 def _normalize(a):
     return a / np.linalg.norm(a)
@@ -324,6 +334,37 @@ def icosahedron(r):
         return _max(_max(_max(a, b), c) - x, d) * r
     return f
 
+# TPMS Lattice Primitives (from worbit/sdf)
+
+@sdf3
+def gyroid(w=1):
+    k = 2 * np.pi / w
+    def f(p):
+        x, y, z = p[:,0], p[:,1], p[:,2]
+        return (np.sin(k * x) * np.cos(k * y) +
+                np.sin(k * y) * np.cos(k * z) +
+                np.sin(k * z) * np.cos(k * x))
+    return f
+
+@sdf3
+def schwartz_p(w=1):
+    k = 2 * np.pi / w
+    def f(p):
+        x, y, z = p[:,0], p[:,1], p[:,2]
+        return np.cos(k * x) + np.cos(k * y) + np.cos(k * z)
+    return f
+
+@sdf3
+def diamond(w=1):
+    k = 2 * np.pi / w
+    def f(p):
+        x, y, z = p[:,0], p[:,1], p[:,2]
+        return (np.sin(k * x) * np.sin(k * y) * np.sin(k * z) +
+                np.sin(k * x) * np.cos(k * y) * np.cos(k * z) +
+                np.cos(k * x) * np.sin(k * y) * np.cos(k * z) +
+                np.cos(k * x) * np.cos(k * y) * np.sin(k * z))
+    return f
+
 # Positioning
 
 @op3
@@ -501,6 +542,163 @@ def wrap_around(other, x0, x1, r=None, e=ease.linear):
         return other(q)
     return f
 
+# Chamfer, twist_between, pieslice (from nobodyinperson/sdf)
+
+@op3
+def chamfer(other1, other2, size):
+    def f(p):
+        d1 = other1(p).reshape(-1)
+        d2 = other2(p).reshape(-1)
+        m = _max(d1, d2)
+        # Chamfer: bevel the intersection edge. The diagonal term
+        # grows faster than max(d1,d2) far from the surface, breaking
+        # the Lipschitz-1 property. Clamp it to preserve bounds estimation.
+        chamfer_term = (d1 + d2) * np.sqrt(0.5) + size
+        return _max(m, np.minimum(chamfer_term, m + size))
+    return f
+
+@op3
+def twist_between(other, a, b, e=ease.linear):
+    a = np.array(a, dtype=float)
+    b = np.array(b, dtype=float)
+    ab = b - a
+    length = np.linalg.norm(ab)
+    direction = ab / length
+    def f(p):
+        t = np.clip(np.dot(p - a, direction) / length, 0, 1)
+        angle = e(t) * 2 * np.pi
+        x = p[:,0]
+        y = p[:,1]
+        z = p[:,2]
+        c = np.cos(angle)
+        s = np.sin(angle)
+        x2 = c * x - s * y
+        y2 = s * x + c * y
+        return other(_vec(x2, y2, z))
+    return f
+
+@sdf3
+def pieslice(angle, centered=False):
+    half = angle / 2
+    def f(p):
+        x = p[:,0]
+        y = p[:,1]
+        a = np.arctan2(y, x)
+        if centered:
+            a = np.abs(a)
+            return np.where(a < half, -1.0, 1.0)
+        else:
+            return np.where(np.logical_and(a >= 0, a <= angle), -1.0, 1.0)
+    return f
+
+# Capsule chain and bezier (from nobodyinperson/sdf)
+
+def capsule_chain(points, radius=None, diameter=None, k=0):
+    if radius is None and diameter is not None:
+        radius = diameter / 2
+    if radius is None:
+        radius = 1
+    points = [np.array(pt, dtype=float) for pt in points]
+    segments = []
+    for i in range(len(points) - 1):
+        segments.append(capsule(points[i], points[i+1], radius))
+    if len(segments) == 1:
+        return segments[0]
+    result = segments[0]
+    for seg in segments[1:]:
+        if k:
+            result = union(result, seg, k=k)
+        else:
+            result = union(result, seg)
+    return result
+
+def bezier(p1, p2, p3, p4, radius=None, diameter=None, steps=20, k=None):
+    if radius is None and diameter is not None:
+        radius = diameter / 2
+    if radius is None:
+        radius = 1
+    p1 = np.array(p1, dtype=float)
+    p2 = np.array(p2, dtype=float)
+    p3 = np.array(p3, dtype=float)
+    p4 = np.array(p4, dtype=float)
+    ts = np.linspace(0, 1, steps + 1)
+    pts = []
+    for t in ts:
+        u = 1 - t
+        pt = u*u*u*p1 + 3*u*u*t*p2 + 3*u*t*t*p3 + t*t*t*p4
+        pts.append(pt)
+    if callable(radius):
+        # Easing-based variable radius
+        segments = []
+        for i in range(len(pts) - 1):
+            t_mid = (ts[i] + ts[i+1]) / 2
+            r = radius(np.array([t_mid])).item()
+            segments.append(capsule(pts[i], pts[i+1], r))
+        result = segments[0]
+        for seg in segments[1:]:
+            if k:
+                result = union(result, seg, k=k)
+            else:
+                result = union(result, seg)
+        return result
+    else:
+        return capsule_chain(pts, radius=radius, k=k or 0)
+
+# Thread and Screw (from nobodyinperson/sdf)
+
+def Thread(pitch=5, diameter=20, offset=1, left=False):
+    """Infinite helical thread.
+
+    Creates a solid cylinder with a helical V-groove cut into its surface.
+
+    Args:
+        pitch: axial distance per full revolution of the thread.
+        diameter: outer diameter of the thread.
+        offset: depth of the thread groove.
+        left: if True, left-handed thread.
+    """
+    r = diameter / 2
+    @sdf3
+    def _thread():
+        def f(p):
+            x, y, z = p[:, 0], p[:, 1], p[:, 2]
+            # Distance from z-axis
+            rho = np.sqrt(x * x + y * y)
+            # Helical angle: maps (z, angle) into a single phase
+            angle = np.arctan2(y, x)
+            phase = z * (2 * np.pi / pitch) - angle
+            if left:
+                phase = z * (2 * np.pi / pitch) + angle
+            # Triangle wave in [0, 1] for the thread profile
+            # This modulates the effective radius
+            t = (phase / (2 * np.pi)) % 1.0
+            # V-shaped groove: radius varies between r and r-offset
+            groove = offset * (1 - 2 * np.abs(t - 0.5))
+            effective_r = r - groove
+            return rho - effective_r
+        return f
+    return _thread()
+
+def Screw(length=40, head_shape=None, head_height=10, k_tip=10, k_head=0, **threadkwargs):
+    thread = Thread(**threadkwargs)
+    body = thread & slab(z0=0, z1=length)
+    if head_shape is not None:
+        head = head_shape & slab(z0=-head_height, z1=0)
+        if k_head:
+            return union(body, head, k=k_head)
+        else:
+            return body | head
+    return body
+
+# Skin operation (from pschou/py-sdf)
+
+@op3
+def skin(other, depth):
+    def f(p):
+        d = other(p).reshape(-1)
+        return _max(d - depth, 0)
+    return f
+
 # 3D => 2D Operations
 
 @op32
@@ -530,3 +728,13 @@ dilate = op3(dn.dilate)
 erode = op3(dn.erode)
 shell = op3(dn.shell)
 repeat = op3(dn.repeat)
+addition = op3(dn.addition)
+multiplication = op3(dn.multiplication)
+division = op3(dn.division)
+morph = op3(dn.morph)
+shell_sided = op3(dn.shell_sided)
+mirror = op3(dn.mirror)
+mirror_copy = op3(dn.mirror_copy)
+stretch = op3(dn.stretch)
+shear = op3(dn.shear)
+modulate_between = op3(dn.modulate_between)

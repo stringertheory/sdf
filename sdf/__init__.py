@@ -20,8 +20,13 @@ from .core import (
     save,
     sample_slice,
     show_slice,
+    bounds,
+    volume,
+    voxelize,
 )
 
 from .stl import (
     write_binary_stl,
 )
+
+from .ease import Easing

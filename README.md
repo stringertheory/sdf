@@ -49,6 +49,7 @@ following the directions below.
 - meshio
 - numpy
 - Pillow
+- pyvista
 - scikit-image
 - scipy
 
@@ -92,15 +93,38 @@ cp openvdb/openvdb/python/pyopenvdb.* `python -c 'import site; print(site.getsit
 
 ## File Formats
 
-`sdf` natively writes binary STL files. For other formats, [meshio](https://github.com/nschloe/meshio)
+`sdf` natively writes binary STL files and STEP files. For other formats, [meshio](https://github.com/nschloe/meshio)
 is used (based on your output file extension). This adds support for over 20 different 3D file formats,
 including OBJ, PLY, VTK, and many more.
 
+```python
+f.save('out.stl')   # binary STL
+f.save('out.step')  # ISO-10303-21 STEP
+f.save('out.obj')   # via meshio
+```
+
 ## Viewing the Mesh
+
+### Interactive Preview
+
+The easiest way to view your SDF is with the built-in `.show()` method, which opens an interactive 3D viewer powered by [pyvista](https://pyvista.org/):
+
+```python
+f = sphere(1) & box(1.5)
+f.show()
+```
+
+You can pass any of the same arguments as `.generate()`:
+
+```python
+f.show(step=0.05)  # higher resolution preview
+```
+
+### External Viewers
 
 <img width=250 align="right" src="docs/images/meshview.png">
 
-Find and install a 3D mesh viewer for your platform, such as [MeshLab](https://www.meshlab.net/).
+You can also use external mesh viewers like [MeshLab](https://www.meshlab.net/).
 
 I have developed and use my own cross-platform mesh viewer called [meshview](https://github.com/fogleman/meshview) (see screenshot).
 Installation is easy if you have [Go](https://golang.org/) and [glfw](https://www.glfw.org/) installed:
@@ -249,9 +273,11 @@ favorite language Python.
 - [sdf/ease.py](https://github.com/fogleman/sdf/blob/main/sdf/ease.py): [Easing functions](https://easings.net/) that operate on numpy arrays. Some SDFs take an easing function as a parameter.
 - [sdf/mesh.py](https://github.com/fogleman/sdf/blob/main/sdf/mesh.py): Code for loading meshes and using them as SDFs.
 - [sdf/progress.py](https://github.com/fogleman/sdf/blob/main/sdf/progress.py): A console progress bar.
+- [sdf/step.py](https://github.com/fogleman/sdf/blob/main/sdf/step.py): Code for writing [STEP files](https://en.wikipedia.org/wiki/ISO_10303-21) (ISO-10303-21).
 - [sdf/stl.py](https://github.com/fogleman/sdf/blob/main/sdf/stl.py): Code for writing a binary [STL file](https://en.wikipedia.org/wiki/STL_(file_format)).
 - [sdf/text.py](https://github.com/fogleman/sdf/blob/main/sdf/text.py): Generate 2D SDFs for text (which can then be extruded)
 - [sdf/util.py](https://github.com/fogleman/sdf/blob/main/sdf/util.py): Utility constants and functions.
+- [sdf/viewer.py](https://github.com/fogleman/sdf/blob/main/sdf/viewer.py): Interactive 3D preview using [pyvista](https://pyvista.org/).
 
 ## SDF Implementation
 
@@ -896,3 +922,341 @@ f = example.translate((0, 0, 0.55)).slice().extrude(0.1)
 ### hexagon
 ### rounded_x
 ### polygon
+### rounded_polygon
+
+`rounded_polygon(points)`
+
+Polygon with optional per-corner arc radii. Each point is `(x, y)` or `(x, y, radius)`.
+
+```python
+f = rounded_polygon([(1, 1, 0.2), (-1, 1, 0.2), (-1, -1, 0.2), (1, -1, 0.2)])
+```
+
+### rounded_cog
+
+`rounded_cog(outer_r, cog_r, num, center=ORIGIN)`
+
+A gear/cog shape with `num` teeth.
+
+```python
+f = rounded_cog(2, 0.3, 12)
+```
+
+## TPMS Lattice Primitives
+
+[Triply periodic minimal surfaces](https://en.wikipedia.org/wiki/Triply_periodic_minimal_surface)
+for lattice structures. These are infinite fields — combine with `& box()` or `& slab()` to bound them.
+
+### gyroid
+
+`gyroid(w=1)`
+
+```python
+f = gyroid(1) & box(2)
+```
+
+### schwartz_p
+
+`schwartz_p(w=1)`
+
+```python
+f = schwartz_p(1) & box(2)
+```
+
+### diamond
+
+`diamond(w=1)`
+
+```python
+f = diamond(1) & box(2)
+```
+
+## Arithmetic Operations
+
+SDF field arithmetic — combine SDF distance fields mathematically.
+
+### addition
+
+`addition(a, b)`
+
+```python
+f = sphere().addition(box())  # f(p) = a(p) + b(p)
+```
+
+### multiplication
+
+`multiplication(a, b)`
+
+```python
+f = sphere().multiplication(box())  # f(p) = a(p) * b(p)
+```
+
+### division
+
+`division(a, b)`
+
+```python
+f = sphere().division(box())  # f(p) = a(p) / b(p)
+```
+
+### morph
+
+`morph(a, b, c, d)`
+
+Interpolate between SDFs `a` and `b` based on control field `c` over distance `d`.
+
+```python
+f = sphere().morph(box(), plane(), 2.0)
+```
+
+## Mirror Operations
+
+### mirror
+
+`mirror(other, direction, at=0)`
+
+Reflects the shape across a plane defined by `direction` and `at`.
+
+```python
+f = sphere(1, center=(2, 0, 0)).mirror((1, 0, 0))  # sphere at (-2, 0, 0)
+```
+
+### mirror_copy
+
+`mirror_copy(other, direction, at=0)`
+
+Reflects and keeps the original (union of original + reflection).
+
+```python
+f = sphere(1, center=(2, 0, 0)).mirror_copy((1, 0, 0))  # spheres at +2 and -2
+```
+
+## Additional Transformations
+
+### chamfer
+
+`chamfer(other1, other2, size)`
+
+Chamfered intersection of two shapes.
+
+```python
+f = sphere().chamfer(box(), 0.1)
+```
+
+### twist_between
+
+`twist_between(other, a, b, e=ease.linear)`
+
+Localized twist between two points with easing.
+
+```python
+f = box().twist_between((0, 0, -1), (0, 0, 1), ease.in_out_quad)
+```
+
+### stretch
+
+`stretch(other, a, b, symmetric=False, e=ease.linear)`
+
+Stretch a shape between two points with easing control.
+
+```python
+f = sphere().stretch((0, 0, -1), (0, 0, 1))
+```
+
+### shear
+
+`shear(other, fix, grab, move, e=ease.linear)`
+
+Shear a shape — points near `fix` stay put, points near `grab` move by `move`.
+
+```python
+f = box().shear((0, 0, -1), (0, 0, 1), (1, 0, 0))
+```
+
+### modulate_between
+
+`modulate_between(other, a, b, e=ease.in_out_cubic)`
+
+Scale the SDF value smoothly between two points.
+
+```python
+f = sphere().modulate_between((0, 0, -1), (0, 0, 1))
+```
+
+### skin
+
+`skin(other, depth)`
+
+One-sided shell: `max(sdf(p) - depth, 0)`.
+
+```python
+f = sphere().skin(0.1)
+```
+
+### shell_sided
+
+`shell_sided(other, thickness, side="center")`
+
+Improved shell with side control: `"center"` (default), `"inner"`, or `"outer"`.
+
+```python
+f = sphere().shell_sided(0.1, side="inner")
+```
+
+## Capsule Chain and Bezier Curves
+
+### capsule_chain
+
+`capsule_chain(points, radius=None, diameter=None, k=0)`
+
+Union of capsules along a polyline.
+
+```python
+f = capsule_chain([(0,0,0), (1,1,0), (2,0,0), (3,1,0)], radius=0.1)
+```
+
+### bezier
+
+`bezier(p1, p2, p3, p4, radius=None, diameter=None, steps=20, k=None)`
+
+Cubic bezier curve as SDF via capsule chain. `radius` can be an `Easing` for variable width.
+
+```python
+f = bezier((0,0,0), (1,2,0), (3,2,0), (4,0,0), radius=0.2)
+
+# Variable radius using easing:
+f = bezier((0,0,0), (1,2,0), (3,2,0), (4,0,0),
+           radius=ease.linear.between(0.5, 0.1))
+```
+
+## Thread and Screw
+
+### Thread
+
+`Thread(pitch=5, diameter=20, offset=1, left=False)`
+
+Infinite helical thread shape.
+
+```python
+f = Thread(pitch=5, diameter=20, offset=1) & slab(z0=0, z1=40)
+```
+
+### Screw
+
+`Screw(length=40, head_shape=None, head_height=10, k_tip=10, k_head=0, **threadkwargs)`
+
+Complete screw: threaded body with optional head.
+
+```python
+f = Screw(length=30, pitch=3, diameter=10, offset=0.5)
+```
+
+### pieslice
+
+`pieslice(angle, centered=False)`
+
+Vertical pie slice for cutting shapes.
+
+```python
+f = sphere() & pieslice(pi / 2, centered=True)
+```
+
+## Additional 2D to 3D Operations
+
+### rounded_extrude
+
+`rounded_extrude(other, h, radius=1)`
+
+Extrude with filleted/rounded edges.
+
+```python
+f = circle(1).rounded_extrude(2, radius=0.2)
+```
+
+### taper_extrude
+
+`taper_extrude(other, h, slope=0, e=ease.linear)`
+
+Extrude with taper along Z.
+
+```python
+f = circle(1).taper_extrude(2, slope=-0.5)
+```
+
+### scale_extrude
+
+`scale_extrude(other, h, top=1, bottom=1, e=ease.linear)`
+
+Extrude with Z-dependent scaling.
+
+```python
+f = circle(1).scale_extrude(2, top=0.5, bottom=1.0)
+```
+
+## Analysis Functions
+
+### bounds
+
+`bounds(sdf)`
+
+Estimate the bounding box of an SDF.
+
+```python
+(x0, y0, z0), (x1, y1, z1) = f.bounds()
+```
+
+### volume
+
+`volume(sdf, bounds=None, samples=100000)`
+
+Estimate the volume via Monte Carlo sampling.
+
+```python
+v = sphere(1).volume()  # ≈ 4.189
+```
+
+### voxelize
+
+`voxelize(sdf, step=None, bounds=None, samples=SAMPLES)`
+
+Convert SDF to a 3D voxel grid.
+
+```python
+volume, spacing, offset = f.voxelize(step=0.1)
+```
+
+## Easing System
+
+The `Easing` class wraps easing functions with composition and arithmetic support.
+All standard easing functions (`ease.linear`, `ease.in_quad`, `ease.in_out_cubic`, etc.)
+are `Easing` instances.
+
+```python
+from sdf import ease
+
+# Arithmetic
+e = ease.linear * 2
+e = ease.in_quad + ease.out_quad
+
+# Composition
+e = ease.in_quad.reverse          # f(1-t)
+e = ease.in_quad.symmetric        # mirror at t=0.5
+e = ease.linear.between(10, 20)   # scale output to [10, 20]
+e = ease.linear[0.25:0.75]        # zoom into subdomain
+e = ease.in_quad | ease.out_quad  # transition at t=0.5
+e = ease.linear.clipped           # clamp input to [0, 1]
+
+# Properties
+e.min   # minimum value over [0, 1]
+e.max   # maximum value over [0, 1]
+e.mean  # average value over [0, 1]
+
+# Plotting
+ease.in_out_cubic.plot()
+
+# Constants
+ease.zero       # always 0
+ease.one        # always 1
+ease.constant(x)  # always x
+ease.smoothstep   # smooth Hermite interpolation
+```

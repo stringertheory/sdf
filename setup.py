@@ -11,6 +11,7 @@ setup(
         'matplotlib',
         'meshio',
         'numpy',
+        'pyvista',
         'scikit-image>=0.17',
         'scipy',
         'Pillow',

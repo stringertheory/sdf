@@ -34,8 +34,9 @@ class SDF2:
     def __sub__(self, other):
         return difference(self, other)
     def k(self, k=None):
-        self._k = k
-        return self
+        result = SDF2(self.f)
+        result._k = k
+        return result
 
 def sdf2(f):
     def wrapper(*args, **kwargs):
@@ -57,7 +58,7 @@ def op23(f):
 # Helpers
 
 def _length(a):
-    return np.linalg.norm(a, axis=1)
+    return np.sqrt(np.einsum('ij,ij->i', a, a))
 
 def _normalize(a):
     return a / np.linalg.norm(a)
@@ -206,6 +207,68 @@ def vesica(r, d):
             _length(p - np.array([-d, 0])) - r)
     return f
 
+# New 2D primitives (from pschou/py-sdf)
+
+def _sinD(a):
+    return np.sin(np.radians(a))
+
+def _cosD(a):
+    return np.cos(np.radians(a))
+
+@sdf2
+def rounded_polygon(points):
+    """Polygon with per-corner arc radii: [(x, y, r), ...]"""
+    n = len(points)
+    corners = [np.array([p[0], p[1]], dtype=float) for p in points]
+    radii = [float(p[2]) if len(p) > 2 else 0.0 for p in points]
+    # Fall back to regular polygon for zero radii
+    if all(r == 0 for r in radii):
+        return polygon(corners)
+    def f(p):
+        d = np.full(len(p), np.inf)
+        for i in range(n):
+            j = (i + 1) % n
+            vi = corners[i]
+            vj = corners[j]
+            ri = radii[i]
+            e = vj - vi
+            w = p - vi
+            b = w - e * np.clip(
+                np.dot(w, e) / np.dot(e, e), 0, 1
+            ).reshape((-1, 1))
+            seg_d = _length(b)
+            if ri > 0:
+                seg_d = seg_d - ri
+            d = _min(d, seg_d)
+        # Compute sign using winding number (same as polygon)
+        s = np.ones(len(p))
+        for i in range(n):
+            j = (i + n - 1) % n
+            vi = corners[i]
+            vj = corners[j]
+            e = vj - vi
+            w = p - vi
+            c1 = p[:,1] >= vi[1]
+            c2 = p[:,1] < vj[1]
+            c3 = e[0] * w[:,1] > e[1] * w[:,0]
+            c = _vec(c1, c2, c3)
+            s = np.where(np.all(c, axis=1) | np.all(~c, axis=1), -s, s)
+        return s * d
+    return f
+
+@sdf2
+def rounded_cog(outer_r, cog_r, num, center=ORIGIN):
+    center = np.array(center, dtype=float)
+    def f(p):
+        q = p - center
+        r = _length(q)
+        a = np.arctan2(q[:,1], q[:,0])
+        tooth_angle = 2 * np.pi / num
+        # Create cog profile as modulated circle
+        mod = np.cos(a * num) * cog_r
+        return r - outer_r - mod
+    return f
+
 # Positioning
 
 @op2
@@ -285,6 +348,46 @@ def revolve(other, offset=0):
         return other(q)
     return f
 
+# New extrusion variants (from pschou/py-sdf)
+
+@op23
+def rounded_extrude(other, h, radius=1):
+    def f(p):
+        d = other(p[:,[0,1]])
+        z = np.abs(p[:,2]) - h / 2
+        d_flat = d.reshape(-1)
+        # Create rounded edge profile
+        qx = d_flat + radius
+        qz = z + radius
+        outside_both = _length(_vec(_max(qx, 0), _max(qz, 0))) - radius
+        inside = _min(_max(qx, qz), 0)
+        return outside_both + inside
+    return f
+
+@op23
+def taper_extrude(other, h, slope=0, e=ease.linear):
+    def f(p):
+        t = np.clip((p[:,2] + h / 2) / h, 0, 1)
+        scale_factor = 1 + slope * e(t)
+        xy = p[:,[0,1]] / scale_factor.reshape(-1, 1)
+        d = other(xy).reshape(-1) * scale_factor
+        z_dist = np.abs(p[:,2]) - h / 2
+        w = _vec(d, z_dist)
+        return _min(_max(w[:,0], w[:,1]), 0) + _length(_max(w, 0))
+    return f
+
+@op23
+def scale_extrude(other, h, top=1, bottom=1, e=ease.linear):
+    def f(p):
+        t = np.clip((p[:,2] + h / 2) / h, 0, 1)
+        scale_factor = bottom + (top - bottom) * e(t)
+        xy = p[:,[0,1]] / scale_factor.reshape(-1, 1)
+        d = other(xy).reshape(-1) * scale_factor
+        z_dist = np.abs(p[:,2]) - h / 2
+        w = _vec(d, z_dist)
+        return _min(_max(w[:,0], w[:,1]), 0) + _length(_max(w, 0))
+    return f
+
 # Common
 
 union = op2(dn.union)
@@ -296,3 +399,13 @@ dilate = op2(dn.dilate)
 erode = op2(dn.erode)
 shell = op2(dn.shell)
 repeat = op2(dn.repeat)
+addition = op2(dn.addition)
+multiplication = op2(dn.multiplication)
+division = op2(dn.division)
+morph = op2(dn.morph)
+shell_sided = op2(dn.shell_sided)
+mirror = op2(dn.mirror)
+mirror_copy = op2(dn.mirror_copy)
+stretch = op2(dn.stretch)
+shear = op2(dn.shear)
+modulate_between = op2(dn.modulate_between)

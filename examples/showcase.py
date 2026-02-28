@@ -12,6 +12,8 @@ def _(mo):
     This notebook demonstrates the SDF library's capabilities for generating
     3D meshes from signed distance functions. We'll build up from simple
     primitives to complex compositions, and preview everything with `.show()`.
+
+    Drag to rotate, scroll to zoom, right-click to pan.
     """)
     return
 
@@ -40,12 +42,12 @@ def _(mo):
 
 
 @app.cell
-def _(X, Y, Z, box, cylinder, mo, sphere):
+def _(X, Y, Z, box, cylinder, sphere):
     # Classic CSG: sphere ∩ box - 3 cylinders
     csg = sphere(1) & box(1.5)
     _c = cylinder(0.5)
     csg -= _c.orient(X) | _c.orient(Y) | _c.orient(Z)
-    mo.image(csg.show())
+    csg.show()
     return
 
 
@@ -60,10 +62,10 @@ def _(mo):
 
 
 @app.cell
-def _(box, mo, sphere, union):
+def _(box, sphere, union):
     # Smooth union of a sphere and a box
     smooth = union(sphere(1), box(1, center=(1.2, 0, 0)), k=0.3)
-    mo.image(smooth.show())
+    smooth.show()
     return
 
 
@@ -79,10 +81,10 @@ def _(mo):
 
 
 @app.cell
-def _(mo, sdf, sphere):
+def _(sdf, sphere):
     # Gyroid lattice bounded by a sphere
     lattice = sdf.d3.gyroid(w=2.0).shell(0.4) & sphere(3)
-    mo.image(lattice.show())
+    lattice.show()
     return
 
 
@@ -97,14 +99,14 @@ def _(mo):
 
 
 @app.cell
-def _(ease, mo, sdf):
+def _(ease, sdf):
     # Bezier curve that tapers from thick to thin
     curve = sdf.d3.bezier(
         (-2, 0, 0), (-1, 2, 0), (1, -2, 0), (2, 0, 0),
         radius=ease.linear.between(0.4, 0.1),
         steps=30,
     )
-    mo.image(curve.show())
+    curve.show()
     return
 
 
@@ -119,7 +121,7 @@ def _(mo):
 
 
 @app.cell
-def _(capped_cylinder, mo, sphere, union):
+def _(capped_cylinder, sphere, union):
     # Build half a shape, then mirror it
     arm = capped_cylinder((0, 0, 0), (2, 0, 0), 0.3)
     body = sphere(1)
@@ -128,7 +130,7 @@ def _(capped_cylinder, mo, sphere, union):
     # Add a hat
     hat = capped_cylinder((0, 0, 0.8), (0, 0, 1.5), 0.6)
     figure = union(mirrored, hat, k=0.15)
-    mo.image(figure.show())
+    figure.show()
     return
 
 
@@ -144,10 +146,10 @@ def _(mo):
 
 
 @app.cell
-def _(box, mo):
+def _(box):
     # A tall box twisted along the Z axis
     twisted = box((0.8, 0.8, 2)).twist(1.5)
-    mo.image(twisted.show())
+    twisted.show()
     return
 
 
@@ -162,13 +164,13 @@ def _(mo):
 
 
 @app.cell
-def _(circle, hexagon, mo, union):
+def _(circle, hexagon, union):
     # Regular extrude vs rounded extrude vs scale extrude
     _a = hexagon(1).extrude(1).translate((-3, 0, 0))
     _b = circle(1).rounded_extrude(1, radius=0.2)
     _c = circle(1).scale_extrude(1.5, top=0.3, bottom=1.0).translate((3, 0, 0))
     extrusions = union(_a, _b, _c)
-    mo.image(extrusions.show())
+    extrusions.show()
     return
 
 
@@ -183,11 +185,11 @@ def _(mo):
 
 
 @app.cell
-def _(mo, sdf):
+def _(sdf):
     # Threaded rod section
     thread = sdf.d3.Thread(pitch=3, diameter=10, offset=0.8)
     thread = thread & sdf.d3.slab(z0=0, z1=20)
-    mo.image(thread.show())
+    thread.show()
     return
 
 

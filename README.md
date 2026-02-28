@@ -923,13 +923,107 @@ f = example.translate((0, 0, 0.55)).slice().extrude(0.1)
 ## 2D Primitives
 
 ### circle
+
+`circle(radius=1, center=ORIGIN)`
+
+```python
+f = circle()       # unit circle
+f = circle(2)      # specify radius
+```
+
 ### line
+
+`line(normal=UP, point=ORIGIN)`
+
+A half-plane. Points in the direction of the normal are outside.
+
+```python
+f = line(UP)              # everything below y=0
+f = line(X, (1, 0))      # everything left of x=1
+```
+
+### slab (2D)
+
+`slab(x0=None, y0=None, x1=None, y1=None, k=None)`
+
+The intersection of axis-aligned half-planes — a 2D bounding region.
+
+```python
+f = slab(x0=-1, x1=1)              # vertical strip
+f = slab(x0=-1, x1=1, y0=-2, y1=2) # rectangle via half-planes
+```
+
 ### rectangle
+
+`rectangle(size=1, center=ORIGIN, a=None, b=None)`
+
+```python
+f = rectangle(1)             # unit square
+f = rectangle((2, 1))        # 2 wide, 1 tall
+f = rectangle(a=(-1, -1), b=(2, 3))  # specified by bounds
+```
+
 ### rounded_rectangle
+
+`rounded_rectangle(size, radius, center=ORIGIN)`
+
+`radius` can be a single value or a tuple of four corner radii `(top_right, bottom_right, bottom_left, top_left)`.
+
+```python
+f = rounded_rectangle((2, 1), 0.2)
+f = rounded_rectangle((2, 1), (0.1, 0.2, 0.3, 0.4))  # per-corner radii
+```
+
 ### equilateral_triangle
+
+`equilateral_triangle()`
+
+A unit equilateral triangle centered at the origin.
+
+```python
+f = equilateral_triangle()
+```
+
 ### hexagon
+
+`hexagon(r)`
+
+A regular hexagon with circumradius `r`.
+
+```python
+f = hexagon(1)
+```
+
 ### rounded_x
+
+`rounded_x(w, r)`
+
+An X shape with arm width `w` and corner radius `r`.
+
+```python
+f = rounded_x(1, 0.2)
+```
+
 ### polygon
+
+`polygon(points)`
+
+An arbitrary polygon defined by a list of `(x, y)` vertices.
+
+```python
+f = polygon([(0, 0), (2, 0), (2, 1), (1, 2), (0, 1)])
+```
+
+### vesica
+
+`vesica(r, d)`
+
+A vesica piscis (lens shape) with radius `r` and half-distance `d`.
+
+```python
+f = vesica(1, 0.5)
+```
+
 ### rounded_polygon
 
 `rounded_polygon(points)`

@@ -71,6 +71,7 @@ def show(sdf_or_points, **generate_kwargs):
     mesh.compute_normals(inplace=True)
 
     pl = pv.Plotter(off_screen=True)
+    pl.add_axes()
     pl.add_mesh(mesh, color='steelblue', smooth_shading=True)
     return pl.screenshot()
 
@@ -82,6 +83,24 @@ def show(sdf_or_points, **generate_kwargs):
 _ESM = """
 import * as THREE from "https://esm.sh/three@0.170.0";
 import { OrbitControls } from "https://esm.sh/three@0.170.0/addons/controls/OrbitControls.js";
+import { Line2 } from "https://esm.sh/three@0.170.0/addons/lines/Line2.js";
+import { LineMaterial } from "https://esm.sh/three@0.170.0/addons/lines/LineMaterial.js";
+import { LineGeometry } from "https://esm.sh/three@0.170.0/addons/lines/LineGeometry.js";
+
+function addAxes(scene, length, resolution) {
+  // Axes in Three.js space, colored by SDF convention (R=X, G=Y, B=Z)
+  // SDF X → Three.js +X, SDF Y → Three.js -Z, SDF Z → Three.js +Y
+  [
+    { pos: [0,0,0, length,0,0], color: 0xff0000 },
+    { pos: [0,0,0, 0,0,-length], color: 0x00ff00 },
+    { pos: [0,0,0, 0,length,0], color: 0x0000ff },
+  ].forEach(({ pos, color }) => {
+    const geom = new LineGeometry();
+    geom.setPositions(pos);
+    const mat = new LineMaterial({ color, linewidth: 3, resolution });
+    scene.add(new Line2(geom, mat));
+  });
+}
 
 function render({ model, el }) {
   const width = model.get("width");
@@ -118,6 +137,13 @@ function render({ model, el }) {
     const idx = model.get("faces_flat");
     if (!verts || !idx || verts.length === 0) return null;
 
+    // SDF Z-up → Three.js Y-up (negate Y to preserve handedness)
+    for (let i = 0; i < verts.length; i += 3) {
+      const tmp = verts[i + 1];
+      verts[i + 1] = verts[i + 2];
+      verts[i + 2] = -tmp;
+    }
+
     const geom = new THREE.BufferGeometry();
     geom.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
     geom.setIndex(Array.from(idx));
@@ -143,12 +169,14 @@ function render({ model, el }) {
     camera.position.copy(center);
     camera.position.x += size * 0.8;
     camera.position.y += size * 0.6;
-    camera.position.z += size * 0.8;
+    camera.position.z -= size * 0.8;
     camera.lookAt(center);
     controls.target.copy(center);
     camera.near = size * 0.001;
     camera.far = size * 100;
     camera.updateProjectionMatrix();
+
+    addAxes(scene, size * 0.4, new THREE.Vector2(width, height));
   }
 
   // Render loop

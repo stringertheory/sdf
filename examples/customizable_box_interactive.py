@@ -14,11 +14,12 @@ def _():
 @app.cell
 def _():
     from sdf import Z, rounded_box, slab
+    from sdf.glsl import ShaderViewer
 
-    return Z, rounded_box, slab
+    return (ShaderViewer,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
     mo.md("""
     # Customizable Box Designer
@@ -51,6 +52,8 @@ def _(mo):
     lid_depth = mo.ui.slider(0.25, 1.5, value=0.75, step=0.05, label="Lid Depth")
     lid_radius = mo.ui.slider(0.025, 0.5, value=0.125, step=0.025, label="Lid Radius")
 
+    show_lid = mo.ui.switch(value=False, label="Show Lid")
+
     mo.vstack([
         mo.md("### Box Dimensions"),
         mo.hstack([width, height, depth, rows, cols], justify="start"),
@@ -59,7 +62,7 @@ def _(mo):
         mo.md("### Dividers"),
         mo.hstack([divider_thickness, row_divider_depth, col_divider_depth, divider_fillet], justify="start"),
         mo.md("### Lid"),
-        mo.hstack([lid_thickness, lid_depth, lid_radius], justify="start"),
+        mo.hstack([lid_thickness, lid_depth, lid_radius, show_lid], justify="start"),
     ])
     return (
         bottom_radius,
@@ -74,6 +77,7 @@ def _(mo):
         lid_thickness,
         row_divider_depth,
         rows,
+        show_lid,
         top_fillet,
         wall_radius,
         wall_thickness,
@@ -82,8 +86,32 @@ def _(mo):
 
 
 @app.cell
+def _(ShaderViewer):
+    viewer = ShaderViewer({
+        "width": 12.0,
+        "height": 6.0,
+        "depth": 2.0,
+        "rows": 3.0,
+        "cols": 5.0,
+        "wall_thickness": 0.25,
+        "wall_radius": 0.5,
+        "bottom_radius": 0.25,
+        "top_fillet": 0.125,
+        "divider_thickness": 0.2,
+        "row_divider_depth": 1.75,
+        "col_divider_depth": 1.5,
+        "divider_fillet": 0.1,
+        "lid_thickness": 0.25,
+        "lid_depth": 0.75,
+        "lid_radius": 0.125,
+        "show_lid": 0.0,
+    })
+    viewer
+    return (viewer,)
+
+
+@app.cell
 def _(
-    Z,
     bottom_radius,
     col_divider_depth,
     cols,
@@ -91,94 +119,37 @@ def _(
     divider_fillet,
     divider_thickness,
     height,
-    rounded_box,
-    row_divider_depth,
-    rows,
-    slab,
-    top_fillet,
-    wall_radius,
-    wall_thickness,
-    width,
-):
-    _W = width.value
-    _H = height.value
-    _D = depth.value
-    _R = int(rows.value)
-    _C = int(cols.value)
-    _WT = wall_thickness.value
-    _WR = wall_radius.value
-    _BR = bottom_radius.value
-    _TF = top_fillet.value
-    _DT = divider_thickness.value
-    _RDD = row_divider_depth.value
-    _CDD = col_divider_depth.value
-    _DF = divider_fillet.value
-
-    # Build dividers
-    _col_spacing = _W / _C
-    _row_spacing = _H / _R
-    _c = rounded_box((_DT, 1e9, _CDD), _DF)
-    _c = _c.translate(Z * _CDD / 2)
-    _c = _c.repeat((_col_spacing, 0, 0))
-    _r = rounded_box((1e9, _DT, _RDD), _DF)
-    _r = _r.translate(Z * _RDD / 2)
-    _r = _r.repeat((0, _row_spacing, 0))
-    if _C % 2 != 0:
-        _c = _c.translate((_col_spacing / 2, 0, 0))
-    if _R % 2 != 0:
-        _r = _r.translate((0, _row_spacing / 2, 0))
-    _divs = _c | _r
-
-    # Build box shell
-    _p = _WT
-    _f = rounded_box((_W - _p, _H - _p, 1e9), _WR)
-    _f &= slab(z0=_p / 2).k(_BR)
-    _divs &= _f
-    _f = _f.shell(_WT)
-    _f &= slab(z1=_D).k(_TF)
-    _box = _f | _divs
-
-    _box.show()
-    return
-
-
-@app.cell
-def _(mo):
-    mo.md("""
-    ### Lid
-    """)
-    return
-
-
-@app.cell
-def _(
-    height,
     lid_depth,
     lid_radius,
     lid_thickness,
-    rounded_box,
-    slab,
+    row_divider_depth,
+    rows,
+    show_lid,
     top_fillet,
+    viewer,
     wall_radius,
     wall_thickness,
     width,
 ):
-    _W = width.value
-    _H = height.value
-    _WT = wall_thickness.value
-    _WR = wall_radius.value
-    _TF = top_fillet.value
-    _LT = lid_thickness.value
-    _LD = lid_depth.value
-    _LR = lid_radius.value
-
-    _p = _WT
-    _f = rounded_box((_W + _p, _H + _p, 1e9), _WR)
-    _f &= slab(z0=_p / 2).k(_LR)
-    _f = _f.shell(_LT)
-    _f &= slab(z1=_LD).k(_TF)
-
-    _f.show()
+    viewer.uniforms = {
+        "width": float(width.value),
+        "height": float(height.value),
+        "depth": float(depth.value),
+        "rows": float(rows.value),
+        "cols": float(cols.value),
+        "wall_thickness": float(wall_thickness.value),
+        "wall_radius": float(wall_radius.value),
+        "bottom_radius": float(bottom_radius.value),
+        "top_fillet": float(top_fillet.value),
+        "divider_thickness": float(divider_thickness.value),
+        "row_divider_depth": float(row_divider_depth.value),
+        "col_divider_depth": float(col_divider_depth.value),
+        "divider_fillet": float(divider_fillet.value),
+        "lid_thickness": float(lid_thickness.value),
+        "lid_depth": float(lid_depth.value),
+        "lid_radius": float(lid_radius.value),
+        "show_lid": 1.0 if show_lid.value else 0.0,
+    }
     return
 
 
